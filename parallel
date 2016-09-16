@@ -1,0 +1,129 @@
+#!/bin/bash
+
+ID_CMD=()
+ID_PLIST=()
+ID_STATUS=()
+
+BEGIN='#-BEGIN'
+END='#-END'
+
+plow_n() {
+  local n="$1"
+  local word="$2"
+  echo_n $n "$word"
+  return_n $n
+}
+
+echo_n() {
+  local n="$1"
+  local word="$2"
+  local i=0
+  while test $i -lt $n
+  do
+    echo "$word"
+    i=$(($i + 1))
+  done
+}
+
+return_n() {
+  local n="$1"
+  echo -en "\033["$n"A"
+}
+
+jump_n() {
+  local n="$1"
+  echo -en "\033["$n"B"
+}
+
+start_background_job() {
+  local id=$1
+  local script="$2"
+
+  bash -c "$script" 2>&1 > /dev/null &
+  local p_id=$!
+  echo "$BEGIN $id $p_id $script"
+  wait $p_id 2>&1 > /dev/null
+  echo "$END $id $?"
+}
+
+arg_n() {
+  local n=$(($1+1))
+  echo "${@:n:1}"
+}
+
+print_plist() {
+  local n="$(echo "${!ID_STATUS[@]}" | wc -w)"
+  plow_n $(($n + 1))
+  {
+    echo '# ECODE CMD'
+    for i in "${!ID_STATUS[@]}"
+    do
+      echo $i ${ID_STATUS[$i]} "$(echo "${ID_CMD[$i]}" "   "| sed 's/ /\_/g')"
+    done
+  } | column -t | sed 's/_/ /g'
+  return_n $(($n + 1))
+}
+
+kill_remaining_children() {
+  local i=""
+  local p_id_to_kill=''
+  for i in "${!ID_PLIST[@]}"
+  do
+    p_id_to_kill=${ID_PLIST[$i]}
+    ID_STATUS[$i]='^C'
+    kill $p_id_to_kill > /dev/null 2>&1
+  done
+  print_plist
+  jump_full
+}
+
+jump_full() {
+  local n="$(echo "${!ID_STATUS[@]}" | wc -w)"
+  jump_n $(($n + 1))
+}
+
+after_arg() {
+  local n=$(sed) #$(($1+1))
+  echo "${@:n}"
+
+}
+
+respond_to_bg_job_status_changes() {
+  while read line
+  do
+    test "${line:0:7}" = "$BEGIN" && {
+      ID_STATUS[$(arg_n 2 $line)]='...'
+      ID_PLIST[$(arg_n 2 $line)]=$(arg_n 3 $line)
+      ID_CMD[$(arg_n 2 $line)]="$(echo 4 | after_arg $line)"
+    }
+    test "${line:0:5}" = "$END" && {
+      local id=$(arg_n 2 $line)
+      local exit_code=$(arg_n 3 $line)
+        unset ID_PLIST[$id]
+        ID_STATUS[$id]=$exit_code
+      test $exit_code = 0 && {
+        echo -n ;
+      } || {
+        kill_remaining_children
+        echo '#' $id exited with code $exit_code
+        exit $exit_code
+      }
+    }
+    print_plist
+  done
+  jump_full
+  echo '# all exited cleanly'
+}
+
+main() {
+  local i=1
+  while read line
+  do
+    start_background_job $i "$line" &
+    i=$((i + 1))
+  done |
+  respond_to_bg_job_status_changes |
+  sed # keep the cursor at the bottom
+}
+
+main

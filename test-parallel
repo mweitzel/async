@@ -1,0 +1,28 @@
+#!/bin/bash
+
+echo
+echo with failure
+echo
+
+echo 'echo hi
+bash -c "echo -n zerooooooo ; sleep 2 ; echo hiiiii ; exit 0"
+bash -c "echo one23 ; sleep 1 ; echo whaaaaat 1>&2 ; exit 123"
+echo done' | ./parallel
+
+echo
+echo with only success
+echo
+
+echo 'echo hi
+bash -c "echo -n zerooooooo ; sleep 2 ; echo hiiiii ; exit 0"
+bash -c "echo one23 ; sleep 1 ; echo whaaaaat 1>&2"
+echo done' | ./parallel
+
+echo
+echo with blank lines
+echo
+
+echo 'echo hi
+
+
+echo done' | ./parallel
