@@ -122,8 +122,7 @@ main() {
     start_background_job $i "$line" &
     i=$((i + 1))
   done |
-  respond_to_bg_job_status_changes |
-  sed # keep the cursor at the bottom
+  respond_to_bg_job_status_changes
 }
 
 main
