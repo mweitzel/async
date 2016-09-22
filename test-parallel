@@ -19,7 +19,7 @@ bash -c "echo one23 ; sleep 1 ; echo whaaaaat 1>&2"
 echo done' | ./parallel
 
 echo
-echo should have 4 lines
+echo should have 4 lines as it fixed newline
 echo
 
 echo -n 'echo one
@@ -29,7 +29,7 @@ echo four' | ./parallel
 
 
 echo
-echo with blank lines
+echo with 4 lines, 2 blank
 echo
 
 echo 'echo hi

@@ -51,9 +51,7 @@ arg_n() {
   echo "${@:n:1}"
 }
 
-print_plist() {
-  local n="$(echo "${!ID_STATUS[@]}" | wc -w)"
-  plow_n $(($n + 1))
+pprint_plist() {
   {
     echo '# ECODE CMD'
     for i in "${!ID_STATUS[@]}"
@@ -61,6 +59,12 @@ print_plist() {
       echo $i ${ID_STATUS[$i]} "$(echo "${ID_CMD[$i]}" "   "| sed 's/ /\_/g')"
     done
   } | column -t | sed 's/_/ /g'
+}
+
+print_plist() {
+  local n="$(echo "${!ID_STATUS[@]}" | wc -w)"
+  plow_n $(($n + 1))
+  pprint_plist
   return_n $(($n + 1))
 }
 
@@ -73,8 +77,6 @@ kill_remaining_children() {
     ID_STATUS[$i]='^C'
     kill $p_id_to_kill > /dev/null 2>&1
   done
-  print_plist
-  jump_full
 }
 
 jump_full() {
@@ -89,6 +91,8 @@ after_arg() {
 }
 
 respond_to_bg_job_status_changes() {
+  local exit_code=0
+  {
   while read line
   do
     test "${line:0:7}" = "$BEGIN" && {
@@ -98,32 +102,37 @@ respond_to_bg_job_status_changes() {
     }
     test "${line:0:5}" = "$END" && {
       local id=$(arg_n 2 $line)
-      local exit_code=$(arg_n 3 $line)
+      exit_code=$(arg_n 3 $line)
         unset ID_PLIST[$id]
         ID_STATUS[$id]=$exit_code
-      test $exit_code = 0 && {
-        echo -n ;
-      } || {
-        kill_remaining_children
-        echo '#' $id exited with code $exit_code
-        exit $exit_code
-      }
+      test $exit_code = 0 || break
     }
     print_plist
   done
-  jump_full
-  echo '# all exited cleanly'
+  kill_remaining_children
+  } 1>&2
+  pprint_plist
+  return $exit_code
 }
 
 main() {
   local i=1
-  sed | # sanitize potential lack of newline
+  sed '/^$/d' | # sanitize: trim empty lines, also prevent lack of terminate newline
   while read line
   do
     start_background_job $i "$line" &
     i=$((i + 1))
   done |
   respond_to_bg_job_status_changes
+  local exit_code=$?
+  {
+    test $exit_code = 0 && {
+      echo 'clean exit - 0'
+    } || {
+      echo "exit with code - $exit_code"
+    }
+  } 1>&2
+  exit $exit_code
 }
 
 main
