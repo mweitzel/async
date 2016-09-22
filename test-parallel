@@ -19,6 +19,16 @@ bash -c "echo one23 ; sleep 1 ; echo whaaaaat 1>&2"
 echo done' | ./parallel
 
 echo
+echo should have 4 lines
+echo
+
+echo -n 'echo one
+echo two
+echo three
+echo four' | ./parallel
+
+
+echo
 echo with blank lines
 echo
 

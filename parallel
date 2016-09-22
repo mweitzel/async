@@ -117,6 +117,7 @@ respond_to_bg_job_status_changes() {
 
 main() {
   local i=1
+  sed | # sanitize potential lack of newline
   while read line
   do
     start_background_job $i "$line" &
