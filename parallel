@@ -115,6 +115,16 @@ respond_to_bg_job_status_changes() {
   return $exit_code
 }
 
+announce_exit() {
+  local exit_code=$1
+  test $exit_code = 0 && {
+    echo 'clean exit - 0'
+  } || {
+    echo "exit with code - $exit_code"
+  }
+  return $exit_code
+}
+
 main() {
   local i=1
   sed '/^$/d' | # sanitize: trim empty lines, also prevent lack of terminate newline
@@ -124,15 +134,8 @@ main() {
     i=$((i + 1))
   done |
   respond_to_bg_job_status_changes
-  local exit_code=$?
-  {
-    test $exit_code = 0 && {
-      echo 'clean exit - 0'
-    } || {
-      echo "exit with code - $exit_code"
-    }
-  } 1>&2
-  exit $exit_code
+  announce_exit $? 1>&2
+  exit $?
 }
 
 main
